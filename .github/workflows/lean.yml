@@ -1,0 +1,36 @@
+name: Lean build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: leanprover/lean-action@v1.7.1
+        with:
+          axiom-audit: "true"
+          axiom-audit-allow: "propext,Classical.choice,Quot.sound"
+      - name: Check axioms
+        shell: bash
+        run: |
+          lake env lean CheckAxioms.lean | tee axioms.txt
+          if grep -q sorryAx axioms.txt; then echo "sorry found"; exit 1; fi
+          grep -q "depends on axioms" axioms.txt || { echo "no axiom output"; exit 1; }
+      - name: Replay all modules with leanchecker
+        shell: bash
+        run: |
+          BIN="$(lean --print-prefix)/bin"
+          mods=$(ls SquareBasis/*.lean | sed 's#/#.#; s#\.lean$##')
+          lake env "$BIN/leanchecker" $mods
+      - name: Check the main results with nanoda (external type checker)
+        shell: bash
+        run: |
+          BIN="$(lean --print-prefix)/bin"
+          decls=$(grep -oE '#print axioms SquareBasis\.[A-Za-z0-9_]+' CheckAxioms.lean | sed 's/#print axioms //')
+          lake env "$BIN/leanexport" SquareBasis -- $decls > export.ndjson
+          "$BIN/nanoda_bin" nanoda.json
