@@ -1,0 +1,10 @@
+name = "SquareBasis"
+defaultTargets = ["SquareBasis"]
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4.git"
+rev = "e62b985f6c61653ebb17cb81d85565022fb1103d"
+
+[[lean_lib]]
+name = "SquareBasis"
